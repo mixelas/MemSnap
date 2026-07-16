@@ -27,6 +27,9 @@ class CacheServer:
         self.lock = threading.RLock()
         self.shutdown_event = threading.Event()
         self.server_socket = None
+        self._dirty = False
+        self._persist_thread = threading.Thread(target=self._flush_loop, daemon=True)
+        self._persist_thread.start()
         self._load()
 
     def _load(self) -> None:
@@ -47,6 +50,18 @@ class CacheServer:
             else:
                 self._add_lfu_bucket(key, 1)
 
+    def _mark_dirty(self) -> None:
+        self._dirty = True
+
+    def _flush_loop(self) -> None:
+        while not self.shutdown_event.is_set():
+            time.sleep(0.2)
+            if self._dirty:
+                with self.lock:
+                    if self._dirty:
+                        self._persist()
+                        self._dirty = False
+
     def _persist(self) -> None:
         payload = {}
         now = time.time()
@@ -57,6 +72,9 @@ class CacheServer:
             if entry.expires_at is not None:
                 ttl = max(0, int(entry.expires_at - now))
             payload[key] = {"value": entry.value, "ttl_seconds": ttl}
+        directory = os.path.dirname(self.db_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
         with open(self.db_path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh)
 
@@ -86,6 +104,7 @@ class CacheServer:
             self.lru_order.pop(key, None)
         else:
             self._remove_from_lfu_bucket(key, entry.freq)
+        self._mark_dirty()
 
     def _touch(self, key: str) -> None:
         if self.policy == "lru":
@@ -106,6 +125,7 @@ class CacheServer:
                 return
             key, _ = self.lru_order.popitem(last=False)
             self.store.pop(key, None)
+            self._mark_dirty()
             return
         if not self.lfu_buckets:
             return
@@ -118,6 +138,7 @@ class CacheServer:
         if not bucket:
             self.lfu_buckets.pop(min_freq, None)
         self.store.pop(victim, None)
+        self._mark_dirty()
 
     def set(self, key: str, value: str, ttl_seconds: int) -> str:
         with self.lock:
@@ -133,7 +154,7 @@ class CacheServer:
                 self.lru_order.move_to_end(key)
             else:
                 self._add_lfu_bucket(key, 1)
-            self._persist()
+            self._mark_dirty()
             return "OK"
 
     def get(self, key: str) -> str:
@@ -144,10 +165,8 @@ class CacheServer:
                 return ""
             if entry.expires_at is not None and entry.expires_at <= time.time():
                 self._remove_entry(key)
-                self._persist()
                 return ""
             self._touch(key)
-            self._persist()
             return entry.value
 
     def serve(self) -> None:
@@ -184,6 +203,8 @@ class CacheServer:
             elif command == "QUIT":
                 response = "OK"
                 self.shutdown_event.set()
+                self._mark_dirty()
+                self._persist()
                 if self.server_socket is not None:
                     try:
                         self.server_socket.close()
