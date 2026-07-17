@@ -67,6 +67,17 @@ class CacheServerTests(unittest.TestCase):
         self.assertEqual(self._send("SET c 3 100\n"), "OK")
         self.assertEqual(self._send("GET b\n"), "")
 
+    def test_get_does_not_rewrite_persistence_file(self):
+        self.assertEqual(self._send("SET a 1 100\n"), "OK")
+        deadline = time.time() + 1.0
+        while not os.path.exists(self.db_path) and time.time() < deadline:
+            time.sleep(0.01)
+        before = os.stat(self.db_path).st_mtime_ns
+        time.sleep(0.05)
+        self.assertEqual(self._send("GET a\n"), "1")
+        after = os.stat(self.db_path).st_mtime_ns
+        self.assertEqual(before, after)
+
     def test_persists_state_to_disk(self):
         self.assertEqual(self._send("SET a 1 100\n"), "OK")
         self._send("QUIT\n")
