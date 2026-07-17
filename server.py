@@ -142,9 +142,10 @@ class CacheServer:
 
     def set(self, key: str, value: str, ttl_seconds: int) -> str:
         with self.lock:
-            self._prune_expired()
             if key in self.store:
                 self._remove_entry(key)
+            if len(self.store) >= self.max_entries:
+                self._prune_expired()
             if len(self.store) >= self.max_entries:
                 self._evict_one()
             entry = CacheEntry(value, ttl_seconds)
@@ -159,7 +160,6 @@ class CacheServer:
 
     def get(self, key: str) -> str:
         with self.lock:
-            self._prune_expired()
             entry = self.store.get(key)
             if entry is None:
                 return ""
