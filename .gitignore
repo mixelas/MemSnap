@@ -1,0 +1,19 @@
+# Bytecode
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+
+# Test artifacts
+test.json
+cache-test-*/
+
+# Editor
+.vscode/
+.DS_Store
+
+# Python packaging
+dist/
+build/
+*.egg-info/
