@@ -24,6 +24,7 @@ class CacheServer:
         self.store = {}
         self.lru_order = OrderedDict()
         self.lfu_buckets = {}
+        self.min_freq = 1
         self.lock = threading.RLock()
         self.shutdown_event = threading.Event()
         self.server_socket = None
@@ -87,6 +88,8 @@ class CacheServer:
     def _add_lfu_bucket(self, key: str, freq: int) -> None:
         bucket = self.lfu_buckets.setdefault(freq, OrderedDict())
         bucket[key] = None
+        if freq < self.min_freq:
+            self.min_freq = freq
 
     def _remove_from_lfu_bucket(self, key: str, freq: int) -> None:
         bucket = self.lfu_buckets.get(freq)
@@ -95,6 +98,8 @@ class CacheServer:
         bucket.pop(key, None)
         if not bucket:
             self.lfu_buckets.pop(freq, None)
+            if freq == self.min_freq:
+                self.min_freq = min(self.lfu_buckets.keys(), default=1)
 
     def _remove_entry(self, key: str) -> None:
         entry = self.store.pop(key, None)
@@ -129,14 +134,16 @@ class CacheServer:
             return
         if not self.lfu_buckets:
             return
-        min_freq = min(self.lfu_buckets)
-        bucket = self.lfu_buckets[min_freq]
-        if not bucket:
-            self.lfu_buckets.pop(min_freq, None)
+        bucket = self.lfu_buckets.get(self.min_freq)
+        if bucket is None:
+            self.min_freq = min(self.lfu_buckets.keys(), default=1)
+            bucket = self.lfu_buckets.get(self.min_freq)
+        if bucket is None:
             return
         victim, _ = bucket.popitem(last=False)
         if not bucket:
-            self.lfu_buckets.pop(min_freq, None)
+            self.lfu_buckets.pop(self.min_freq, None)
+            self.min_freq = min(self.lfu_buckets.keys(), default=1)
         self.store.pop(victim, None)
         self._mark_dirty()
 
