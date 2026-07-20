@@ -12,7 +12,7 @@ This project is designed to showcase strong fundamentals in data structures and 
 - a simple network protocol over TCP sockets
 - a persistence layer that batches writes instead of forcing disk I/O on every access
 
-It is a strong example for engineers interviewing for backend, infrastructure, distr`ibuted systems, or platform roles because it demonstrates both algorithmic thinking and practical engineering judgment.
+It is a strong example for engineers interviewing for backend, infrastructure, distributed systems, or platform roles because it demonstrates both algorithmic thinking and practical engineering judgment.
 
 ## What the system implements
 
