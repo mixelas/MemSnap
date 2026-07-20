@@ -184,10 +184,10 @@ class CacheServer:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind((self.host, self.port))
+            server.listen(5)
             self.server_socket = server
             port = server.getsockname()[1]
             print(port, flush=True)
-            server.listen(5)
             server.settimeout(0.5)
             while not self.shutdown_event.is_set():
                 try:
