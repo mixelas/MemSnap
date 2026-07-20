@@ -149,6 +149,10 @@ class CacheServer:
 
     def set(self, key: str, value: str, ttl_seconds: int) -> str:
         with self.lock:
+            if not key:
+                return "ERR"
+            if ttl_seconds < 0:
+                return "ERR"
             if key in self.store:
                 self._remove_entry(key)
             if len(self.store) >= self.max_entries:
@@ -169,10 +173,10 @@ class CacheServer:
         with self.lock:
             entry = self.store.get(key)
             if entry is None:
-                return ""
+                return "NULL"
             if entry.expires_at is not None and entry.expires_at <= time.time():
                 self._remove_entry(key)
-                return ""
+                return "NULL"
             self._touch(key)
             return entry.value
 
@@ -199,12 +203,26 @@ class CacheServer:
             data = conn.recv(4096).decode("utf-8", errors="ignore")
             if not data:
                 return
-            parts = data.strip().split()
+            raw = data.strip()
+            if not raw:
+                return
+            parts = raw.split(None, 3)
             if not parts:
                 return
             command = parts[0].upper()
-            if command == "SET" and len(parts) >= 4:
-                response = self.set(parts[1], parts[2], int(parts[3]))
+            if command == "SET":
+                if len(parts) != 4:
+                    response = "ERR"
+                else:
+                    try:
+                        ttl = int(parts[3])
+                    except ValueError:
+                        response = "ERR"
+                    else:
+                        value = parts[2]
+                        if value in {'""', "''"}:
+                            value = ""
+                        response = self.set(parts[1], value, ttl)
             elif command == "GET" and len(parts) >= 2:
                 response = self.get(parts[1])
             elif command == "QUIT":
