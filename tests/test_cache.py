@@ -50,14 +50,14 @@ class CacheServerTests(unittest.TestCase):
         self.assertEqual(self._send("SET a 1 2\n"), "OK")
         self.assertEqual(self._send("GET a\n"), "1")
         time.sleep(2.2)
-        self.assertEqual(self._send("GET a\n"), "")
+        self.assertEqual(self._send("GET a\n"), "NULL")
 
     def test_lru_eviction(self):
         self.assertEqual(self._send("SET a 1 100\n"), "OK")
         self.assertEqual(self._send("SET b 2 100\n"), "OK")
         self.assertEqual(self._send("GET a\n"), "1")
         self.assertEqual(self._send("SET c 3 100\n"), "OK")
-        self.assertEqual(self._send("GET b\n"), "")
+        self.assertEqual(self._send("GET b\n"), "NULL")
 
     def test_lfu_eviction(self):
         self.assertEqual(self._send("SET a 1 100\n"), "OK")
@@ -65,7 +65,15 @@ class CacheServerTests(unittest.TestCase):
         self.assertEqual(self._send("GET a\n"), "1")
         self.assertEqual(self._send("GET a\n"), "1")
         self.assertEqual(self._send("SET c 3 100\n"), "OK")
-        self.assertEqual(self._send("GET b\n"), "")
+        self.assertEqual(self._send("GET b\n"), "NULL")
+
+    def test_get_distinguishes_missing_key_from_empty_string(self):
+        self.assertEqual(self._send('SET a "" 100\n'), "OK")
+        self.assertEqual(self._send("GET a\n"), "")
+        self.assertEqual(self._send("GET missing\n"), "NULL")
+
+    def test_malformed_set_returns_error(self):
+        self.assertEqual(self._send("SET a hello world 10\n"), "ERR")
 
     def test_get_does_not_rewrite_persistence_file(self):
         self.assertEqual(self._send("SET a 1 100\n"), "OK")
