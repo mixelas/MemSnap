@@ -102,6 +102,29 @@ python -m unittest discover -s tests -v
 - `tests/test_cache.py` — behavior tests for TTL, eviction, and persistence
 - `README.md` — design, tradeoffs, and usage
 
+## Quick demo with bundled client
+
+`client.py` is a tiny REPL that opens a fresh TCP connection per command (the server expects one-shot connections).
+
+Usage:
+
+```bash
+python client.py --port 6380
+# then at the prompt:
+> SET a 1 30
+OK
+> GET a
+1
+> QUIT
+OK
+```
+
+You can also send a single command non-interactively:
+
+```bash
+python client.py --port 6380 --cmd "SET x 42 60"
+```
+
 ## Bottom line
 
 This is a compact but technically rich cache engine that communicates strong engineering depth without relying on frameworks or boilerplate. It is the kind of project that makes technical interview conversations much easier because the implementation choices are concrete, explainable, and measurable.
