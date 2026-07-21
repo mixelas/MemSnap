@@ -1,18 +1,16 @@
 # Lightweight Cache Engine in Python
 
-A compact, interview-style cache server that implements core systems concepts in a single, readable Python implementation: hash-based storage, TTL handling, eviction policies, socket I/O, and persistence.
+A compact cache server that implements core systems concepts in a readable Python implementation: hash-based storage, TTL handling, eviction policies, socket I/O, and persistence.
 
-## Why this project stands out
+## Design goals
 
-This project is designed to showcase strong fundamentals in data structures and systems design:
+This implementation focuses on clarity and correctness for:
 
-- a hash map backed cache with constant-time lookup semantics
-- eviction strategies that reflect real-world cache tradeoffs
-- lazy TTL expiration to avoid unnecessary full-store scans
-- a simple network protocol over TCP sockets
-- a persistence layer that batches writes instead of forcing disk I/O on every access
-
-It is a strong example for engineers interviewing for backend, infrastructure, distributed systems, or platform roles because it demonstrates both algorithmic thinking and practical engineering judgment.
+- in-memory key-value storage with optional expiration
+- configurable eviction policies (LRU and LFU)
+- a simple TCP command protocol for GET/SET/QUIT
+- deferred persistence to reduce write amplification
+- concurrency using thread-per-connection socket handling
 
 ## What the system implements
 
@@ -64,14 +62,14 @@ Use cases:
 | LFU eviction | `O(1)` | uses the tracked minimum-frequency bucket |
 | persistence flush | `O(n)` | deferred to avoid blocking normal cache operations |
 
-## Why it is interesting from an interview perspective
+## Engineering considerations
 
-This project shows that you can think beyond “just implement a cache.” It demonstrates:
+The implementation reflects several practical tradeoffs:
 
-- algorithmic tradeoffs between recency-based and frequency-based eviction
-- the difference between correctness and performance in systems code
-- careful design around mutation, expiration, and persistence
-- awareness of I/O cost and the importance of batching writes
+- recency-based eviction (LRU) versus frequency-based eviction (LFU)
+- lazy TTL expiration to avoid full-store scans on every access
+- a persistence model that batches writes rather than flushing on every mutation
+- a thread-per-connection server model that keeps socket handling simple
 
 ## Running the server
 
@@ -125,6 +123,3 @@ You can also send a single command non-interactively:
 python client.py --port 6380 --cmd "SET x 42 60"
 ```
 
-## Bottom line
-
-This is a compact but technically rich cache engine that communicates strong engineering depth without relying on frameworks or boilerplate. It is the kind of project that makes technical interview conversations much easier because the implementation choices are concrete, explainable, and measurable.
